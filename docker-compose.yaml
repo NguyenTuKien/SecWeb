@@ -1,0 +1,28 @@
+version: '3.8'
+
+services:
+  sandbox:
+    build:
+      context: ./sandbox
+    privileged: true # Cần thiết để sử dụng clone() và namespaces
+    volumes:
+      - ./sandbox:/app
+      - /sys/fs/cgroup:/sys/fs/cgroup:ro # Cần cho cgroups v2
+    ports:
+      - "8000:8000"
+    networks:
+      - bashlab-net
+
+  frontend:
+    build:
+      context: ./frontend
+    ports:
+      - "80:80"
+    depends_on:
+      - sandbox
+    networks:
+      - bashlab-net
+
+networks:
+  bashlab-net:
+    driver: bridge
