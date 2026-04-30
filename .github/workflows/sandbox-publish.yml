@@ -16,6 +16,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       sandbox: ${{ steps.filter.outputs.sandbox }}
+      frontend: ${{ steps.filter.outputs.frontend }}
     steps:
       - uses: actions/checkout@v4
       - uses: dorny/paths-filter@v3
@@ -24,6 +25,8 @@ jobs:
           filters: |
             sandbox:
               - 'sandbox/**'
+            frontend:
+              - 'frontend/**'
 
   prepare:
     runs-on: ubuntu-latest
@@ -48,22 +51,17 @@ jobs:
     permissions:
       contents: read
       packages: write
-
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
+      - uses: actions/checkout@v4
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
-
-      - name: Log in to the Container registry
+      - name: Log in to GHCR
         uses: docker/login-action@v3
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Build and push Docker image
+      - name: Build and push Sandbox
         uses: docker/build-push-action@v5
         with:
           context: ./sandbox
@@ -75,3 +73,51 @@ jobs:
             suffix=-sandbox
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+  build-frontend:
+    needs: [filter, prepare]
+    if: ${{ needs.filter.outputs.frontend == 'true' || github.event_name == 'workflow_dispatch' || startsWith(github.ref, 'refs/tags/') }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Build and push Frontend
+        uses: docker/build-push-action@v5
+        with:
+          context: ./frontend
+          file: ./frontend/Dockerfile
+          push: true
+          tags: ${{ needs.prepare.outputs.tags }}
+          labels: ${{ needs.prepare.outputs.labels }}
+          flavor: |
+            suffix=-frontend
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  deploy:
+    needs: [build-sandbox, build-frontend]
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy to K3s via SSH
+        uses: appleboy/ssh-action@master
+        with:
+          host: 192.168.123.73
+          username: k3s
+          key: ${{ secrets.SSH_KEY }}
+          script: |
+            # Áp dụng các thay đổi từ manifest (giả sử manifest đã có trên server hoặc được git pull)
+            # Ở đây ta sẽ force pull image mới nhất
+            kubectl apply -f https://raw.githubusercontent.com/${{ github.repository }}/main/k8s/deployment.yaml
+            kubectl rollout restart deployment/sandbox -n bashlab
+            kubectl rollout restart deployment/frontend -n bashlab
