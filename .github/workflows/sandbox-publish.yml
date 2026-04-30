@@ -105,8 +105,13 @@ jobs:
           cache-to: type=gha,mode=max
 
   deploy:
-    needs: [build-sandbox, build-frontend]
-    if: github.ref == 'refs/heads/main'
+    needs: [filter, build-sandbox, build-frontend]
+    if: |
+      always() && 
+      (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/')) && 
+      (needs.build-sandbox.result == 'success' || needs.build-sandbox.result == 'skipped') &&
+      (needs.build-frontend.result == 'success' || needs.build-frontend.result == 'skipped') &&
+      (needs.filter.outputs.sandbox == 'true' || needs.filter.outputs.frontend == 'true' || startsWith(github.ref, 'refs/tags/'))
     runs-on: ubuntu-latest
     steps:
       - name: Deploy to K3s via SSH
