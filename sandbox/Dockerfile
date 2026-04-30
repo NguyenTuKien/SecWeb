@@ -18,7 +18,7 @@ WORKDIR /app
 COPY requirements.txt .
 RUN pip3 install --no-cache-dir -r requirements.txt
 
-COPY container_engine.py main.py ./
+COPY engine.py main.py ./
 
 # Expose cổng REST API
 EXPOSE 8000
