@@ -1,0 +1,78 @@
+name: Build and Publish Images
+
+on:
+  push:
+    branches: [ "main", "master" ]
+    tags: [ "v*" ]
+  pull_request:
+    branches: [ "main", "master" ]
+  workflow_dispatch:
+
+env:
+  REGISTRY: ghcr.io
+
+jobs:
+  # Bước 1: Filter - Kiểm tra xem thư mục nào có thay đổi
+  filter:
+    runs-on: ubuntu-latest
+    outputs:
+      vnc-base: ${{ steps.changes.outputs.vnc-base }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: changes
+        with:
+          filters: |
+            vnc-base:
+              - 'vnc-base/**'
+
+  # Bước 2: Get Tag - Xác định Tag cho image
+  get-tag:
+    runs-on: ubuntu-latest
+    outputs:
+      image_tag: ${{ steps.set-tag.outputs.tag }}
+    steps:
+      - name: Determine Tag
+        id: set-tag
+        run: |
+          if [[ "${{ github.ref }}" == refs/tags/* ]]; then
+            # Nếu là push tag (v1.0...) -> lấy tên tag
+            TAG=${GITHUB_REF#refs/tags/}
+          elif [[ "${{ github.event_name }}" == "pull_request" ]]; then
+            # Nếu là Pull Request -> lấy sha ngắn
+            TAG="sha-${GITHUB_SHA::7}"
+          else
+            # Mặc định (push main/master) -> latest
+            TAG="latest"
+          fi
+          echo "tag=$TAG" >> $GITHUB_OUTPUT
+          echo "Generated tag: $TAG"
+
+  # Bước 3: Build and Push - Thực hiện build cho từng service nếu có thay đổi
+  build-vnc-base:
+    needs: [filter, get-tag]
+    if: ${{ needs.filter.outputs.vnc-base == 'true' }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Log in to the Container registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push vnc-base
+        uses: docker/build-push-action@v5
+        with:
+          context: ./vnc-base
+          file: ./vnc-base/Dockerfile
+          push: true
+          tags: |
+            ${{ env.REGISTRY }}/${{ github.repository_owner }}/vnc-base:${{ needs.get-tag.outputs.image_tag }}
