@@ -68,6 +68,10 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Downcase Repo Name
+        run: |
+          echo "REPO_LC=${GITHUB_REPOSITORY_OWNER,,}" >> $GITHUB_ENV
+
       - name: Build and push vnc-base
         uses: docker/build-push-action@v5
         with:
@@ -75,4 +79,4 @@ jobs:
           file: ./vnc-base/Dockerfile
           push: true
           tags: |
-            ${{ env.REGISTRY }}/${{ github.repository_owner }}/vnc-base:${{ needs.get-tag.outputs.image_tag }}
+            ${{ env.REGISTRY }}/${{ env.REPO_LC }}/vnc-base:${{ needs.get-tag.outputs.image_tag }}
