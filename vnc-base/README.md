@@ -62,3 +62,5 @@ Bạn có thể thay đổi cấu hình khi chạy bằng cách thêm tham số 
 - `VNC_PW`: Thay đổi mật khẩu truy cập.
 - `VNC_RESOLUTION`: Thay đổi độ phân giải màn hình (mặc định `1280x1024`).
 - `VNC_COL_DEPTH`: Thay đổi độ sâu màu (mặc định `24`).
+
+
