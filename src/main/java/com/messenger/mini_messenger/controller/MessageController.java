@@ -1,0 +1,50 @@
+package com.messenger.mini_messenger.controller;
+
+import com.messenger.mini_messenger.dto.request.SendMessageRequest;
+import com.messenger.mini_messenger.dto.response.MessageCreatedResponse;
+import com.messenger.mini_messenger.dto.response.MessageResponse;
+import com.messenger.mini_messenger.security.CurrentUser;
+import com.messenger.mini_messenger.service.MessageService;
+import jakarta.validation.Valid;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
+
+import java.util.List;
+import java.util.UUID;
+
+@RestController
+@RequestMapping("/api/v1/conversations/{conversationId}/messages")
+public class MessageController {
+
+    private final MessageService messageService;
+
+    public MessageController(MessageService messageService) {
+        this.messageService = messageService;
+    }
+
+    @GetMapping
+    public List<MessageResponse> getMessages(
+            @AuthenticationPrincipal CurrentUser currentUser,
+            @PathVariable UUID conversationId,
+            @RequestParam(name = "limit", defaultValue = "30") int limit
+    ) {
+        return messageService.getMessages(currentUser, conversationId, limit);
+    }
+
+    @PostMapping
+    public ResponseEntity<MessageCreatedResponse> sendMessage(
+            @AuthenticationPrincipal CurrentUser currentUser,
+            @PathVariable UUID conversationId,
+            @Valid @RequestBody SendMessageRequest request
+    ) {
+        return ResponseEntity.status(HttpStatus.CREATED).body(messageService.sendMessage(currentUser, conversationId, request));
+    }
+}

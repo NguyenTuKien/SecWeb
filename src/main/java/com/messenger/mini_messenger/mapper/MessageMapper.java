@@ -1,0 +1,79 @@
+package com.messenger.mini_messenger.mapper;
+
+import com.messenger.mini_messenger.dto.request.MessageAttachmentRequest;
+import com.messenger.mini_messenger.dto.request.SendMessageRequest;
+import com.messenger.mini_messenger.dto.response.MessageAttachmentResponse;
+import com.messenger.mini_messenger.dto.response.MessageResponse;
+import com.messenger.mini_messenger.entity.Message;
+import com.messenger.mini_messenger.entity.MessageAttachment;
+import com.messenger.mini_messenger.enums.MessageType;
+import com.messenger.mini_messenger.util.JsonUtil;
+import org.springframework.stereotype.Component;
+
+import java.util.List;
+
+@Component
+public class MessageMapper {
+
+    private final JsonUtil jsonUtil;
+
+    public MessageMapper(JsonUtil jsonUtil) {
+        this.jsonUtil = jsonUtil;
+    }
+
+    public Message toEntity(SendMessageRequest request) {
+        Message message = new Message();
+        message.setCipherData(request.cipherData());
+        message.setIv(request.iv());
+        message.setMessageType(MessageType.valueOf(request.messageType()));
+        message.setClientCreatedAt(request.clientCreatedAt());
+        if (request.attachments() != null) {
+            request.attachments().forEach(attachmentRequest -> {
+                MessageAttachment attachment = toEntity(attachmentRequest);
+                attachment.setMessage(message);
+                message.getAttachments().add(attachment);
+            });
+        }
+        return message;
+    }
+
+    public MessageAttachment toEntity(MessageAttachmentRequest request) {
+        MessageAttachment attachment = new MessageAttachment();
+        attachment.setStorageProvider(request.storageProvider());
+        attachment.setStorageKey(request.storageKey());
+        attachment.setEncryptedFileKey(request.encryptedFileKey());
+        attachment.setEncryptedMetadata(jsonUtil.toJson(request.encryptedMetadata()));
+        return attachment;
+    }
+
+    public MessageResponse toResponse(Message message) {
+        List<MessageAttachmentResponse> attachments = message.getAttachments().stream()
+                .map(this::toResponse)
+                .toList();
+        return new MessageResponse(
+                message.getId(),
+                message.getConversation().getId(),
+                message.getSender().getId(),
+                message.getKeyVersion().getKeyVersion(),
+                message.getClientMessageId(),
+                message.getCipherData(),
+                message.getIv(),
+                message.getAad(),
+                message.getMessageType(),
+                message.getClientCreatedAt(),
+                message.getCreatedAt(),
+                attachments
+        );
+    }
+
+    private MessageAttachmentResponse toResponse(MessageAttachment attachment) {
+        return new MessageAttachmentResponse(
+                attachment.getId(),
+                attachment.getStorageProvider(),
+                attachment.getStorageKey(),
+                attachment.getEncryptedFileKey(),
+                jsonUtil.toMap(attachment.getEncryptedMetadata()),
+                attachment.getCreatedAt()
+        );
+    }
+}
