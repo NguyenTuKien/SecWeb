@@ -1,15 +1,19 @@
 package com.messenger.mini_messenger.controller;
 
+import com.messenger.mini_messenger.dto.request.UpdateUserRequest;
 import com.messenger.mini_messenger.dto.response.ActiveSessionResponse;
 import com.messenger.mini_messenger.dto.response.PublicKeyResponse;
 import com.messenger.mini_messenger.dto.response.UserResponse;
 import com.messenger.mini_messenger.security.CurrentUser;
 import com.messenger.mini_messenger.service.UserService;
+import jakarta.validation.Valid;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
@@ -28,6 +32,14 @@ public class UserController {
     @GetMapping("/me")
     public UserResponse me(@AuthenticationPrincipal CurrentUser currentUser) {
         return userService.getMe(currentUser);
+    }
+
+    @PatchMapping("/me")
+    public UserResponse updateMe(
+            @AuthenticationPrincipal CurrentUser currentUser,
+            @Valid @RequestBody UpdateUserRequest request
+    ) {
+        return userService.updateMe(currentUser, request);
     }
 
     @GetMapping("/search")

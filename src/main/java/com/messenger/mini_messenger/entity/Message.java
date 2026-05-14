@@ -59,6 +59,9 @@ public class Message extends BaseEntity {
     @Column(name = "client_created_at", nullable = false)
     private Instant clientCreatedAt;
 
+    @Column(name = "edited_at")
+    private Instant editedAt;
+
     @Column(name = "deleted_at")
     private Instant deletedAt;
 

@@ -18,6 +18,7 @@ public record MessageResponse(
         MessageType messageType,
         Instant clientCreatedAt,
         Instant serverCreatedAt,
+        Instant editedAt,
         List<MessageAttachmentResponse> attachments
 ) {
 }

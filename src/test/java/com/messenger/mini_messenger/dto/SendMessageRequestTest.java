@@ -42,8 +42,10 @@ class SendMessageRequestTest {
     @Test
     void validatesRequiredEncryptedMessageFields() throws JsonProcessingException {
         var request = new SendMessageRequest(
+                "client-message-1",
                 "Y2lwaGVy",
                 "aXY=",
+                "YWFk",
                 1,
                 "TEXT",
                 Instant.parse("2026-05-13T09:00:00Z"),
@@ -51,5 +53,30 @@ class SendMessageRequestTest {
         );
 
         assertEquals(0, validator.validate(request).size());
+    }
+
+    @Test
+    void deserializesClientMessageIdAndAadAsEncryptedTransportMetadata() throws JsonProcessingException {
+        var mapper = JsonMapper.builder()
+                .findAndAddModules()
+                .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, true)
+                .build();
+
+        String payload = """
+                {
+                  "clientMessageId": "client-message-1",
+                  "cipherData": "Y2lwaGVy",
+                  "iv": "aXY=",
+                  "aad": "YWFk",
+                  "keyVersion": 1,
+                  "messageType": "TEXT",
+                  "clientCreatedAt": "2026-05-13T09:00:00Z"
+                }
+                """;
+
+        SendMessageRequest request = mapper.readValue(payload, SendMessageRequest.class);
+
+        assertEquals("client-message-1", request.clientMessageId());
+        assertEquals("YWFk", request.aad());
     }
 }

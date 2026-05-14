@@ -1,6 +1,8 @@
 package com.messenger.mini_messenger.service.impl;
 
 import com.messenger.mini_messenger.dto.request.SendMessageRequest;
+import com.messenger.mini_messenger.dto.request.UpdateMessageRequest;
+import com.messenger.mini_messenger.dto.response.ApiMessageResponse;
 import com.messenger.mini_messenger.dto.response.MessageCreatedResponse;
 import com.messenger.mini_messenger.dto.response.MessageResponse;
 import com.messenger.mini_messenger.entity.Conversation;
@@ -55,9 +57,12 @@ public class MessageServiceImpl implements MessageService {
     @Override
     public List<MessageResponse> getMessages(CurrentUser currentUser, UUID conversationId, int limit) {
         requireParticipant(currentUser, conversationId);
+        if (limit < 1 || limit > 100) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "Message limit must be between 1 and 100");
+        }
         List<Message> messages = messageRepository.findByConversationIdAndDeletedAtIsNullOrderByCreatedAtDesc(conversationId);
         return messages.stream()
-                .limit(Math.min(Math.max(limit, 1), 100))
+                .limit(limit)
                 .sorted(Comparator.comparing(Message::getCreatedAt))
                 .map(messageMapper::toResponse)
                 .toList();
@@ -84,6 +89,32 @@ public class MessageServiceImpl implements MessageService {
         return new MessageCreatedResponse(message.getId(), conversationId, sender.getId(), message.getCreatedAt());
     }
 
+    @Override
+    @Transactional
+    public MessageResponse updateMessage(CurrentUser currentUser, UUID conversationId, UUID messageId, UpdateMessageRequest request) {
+        requireParticipant(currentUser, conversationId);
+        Message message = findMessageInConversation(conversationId, messageId);
+        requireSender(currentUser, message);
+        requireNotDeleted(message);
+        ConversationKeyVersion keyVersion = keyVersionRepository.findByConversationIdAndKeyVersion(conversationId, request.keyVersion())
+                .orElseThrow(() -> new ApiException(HttpStatus.BAD_REQUEST, "Conversation key version not found"));
+
+        messageMapper.applyEncryptedUpdate(message, request, keyVersion);
+        message.setEditedAt(Instant.now());
+        return messageMapper.toResponse(message);
+    }
+
+    @Override
+    @Transactional
+    public ApiMessageResponse deleteMessage(CurrentUser currentUser, UUID conversationId, UUID messageId) {
+        requireParticipant(currentUser, conversationId);
+        Message message = findMessageInConversation(conversationId, messageId);
+        requireSender(currentUser, message);
+        requireNotDeleted(message);
+        message.setDeletedAt(Instant.now());
+        return new ApiMessageResponse("Message deleted successfully");
+    }
+
     private void requireParticipant(CurrentUser currentUser, UUID conversationId) {
         memberRepository.findByConversationIdAndUserIdAndStatus(
                         conversationId,
@@ -91,5 +122,23 @@ public class MessageServiceImpl implements MessageService {
                         ConversationMemberStatus.ACTIVE
                 )
                 .orElseThrow(() -> new ApiException(HttpStatus.FORBIDDEN, "You are not a participant of this conversation"));
+    }
+
+    private Message findMessageInConversation(UUID conversationId, UUID messageId) {
+        return messageRepository.findById(messageId)
+                .filter(message -> message.getConversation().getId().equals(conversationId))
+                .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Message not found"));
+    }
+
+    private void requireSender(CurrentUser currentUser, Message message) {
+        if (!message.getSender().getId().equals(currentUser.userId())) {
+            throw new ApiException(HttpStatus.FORBIDDEN, "Only message sender can modify this message");
+        }
+    }
+
+    private void requireNotDeleted(Message message) {
+        if (message.getDeletedAt() != null) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "Message is already deleted");
+        }
     }
 }
