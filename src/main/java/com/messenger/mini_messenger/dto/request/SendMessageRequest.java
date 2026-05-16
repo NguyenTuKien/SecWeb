@@ -1,6 +1,7 @@
 package com.messenger.mini_messenger.dto.request;
 
 import com.messenger.mini_messenger.validation.Base64Value;
+import com.messenger.mini_messenger.enums.MessageType;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
@@ -16,7 +17,7 @@ public record SendMessageRequest(
         @NotBlank @Base64Value String iv,
         @Size(max = 512) @Base64Value String aad,
         @Min(1) int keyVersion,
-        @NotBlank String messageType,
+        @NotNull MessageType messageType,
         @NotNull Instant clientCreatedAt,
         @Size(max = 20) List<@Valid MessageAttachmentRequest> attachments
 ) {

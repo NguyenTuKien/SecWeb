@@ -6,12 +6,10 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 
-import java.util.Map;
-
 public record MessageAttachmentRequest(
         @NotNull StorageProvider storageProvider,
         @NotBlank @Size(max = 500) String storageKey,
         @NotBlank @Base64Value String encryptedFileKey,
-        @NotNull Map<String, Object> encryptedMetadata
+        @NotBlank @Base64Value String encryptedMetadata
 ) {
 }
