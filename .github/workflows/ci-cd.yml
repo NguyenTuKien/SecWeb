@@ -8,19 +8,18 @@ on:
     branches: [ "main" ]
 
 jobs:
-  # 1. Unit Test
   unit-test:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      
+
       - name: Set up JDK 21
         uses: actions/setup-java@v4
         with:
           java-version: '21'
           distribution: 'temurin'
           cache: maven
-          
+
       - name: Make mvnw executable
         run: chmod +x mvnw
 
@@ -40,181 +39,25 @@ jobs:
       - name: Run Unit Tests
         run: ./mvnw clean test
 
-  # 2. Code Quality (SonarCloud placeholder)
-  # Neu ban muon tich hop SonarCloud, hay bo comment phan nay va cau hinh SONAR_TOKEN
-  # code-quality:
-  #   needs: unit-test
-  #   runs-on: ubuntu-latest
-  #   steps:
-  #     - uses: actions/checkout@v4
-  #       with:
-  #         fetch-depth: 0
-  #     - name: Set up JDK 21
-  #       uses: actions/setup-java@v4
-  #       with:
-  #         java-version: '21'
-  #         distribution: 'temurin'
-  #     - name: SonarCloud Scan
-  #       env:
-  #         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-  #         SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-  #       run: ./mvnw -B verify sonar:sonar -Dsonar.projectKey=your_project_key -Dsonar.organization=your_org
-
-  # 3. Integration Test
-  integration-test:
+  build-image:
     needs: unit-test
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Create and export .env file
-        run: |
-          echo "${{ secrets.ENV_FILE }}" > .env
-          while IFS= read -r line || [ -n "$line" ]; do
-            if [[ "$line" =~ ^[A-Z0-9_]+= ]]; then
-              key=$(echo "$line" | cut -d'=' -f1)
-              val=$(echo "$line" | cut -d'=' -f2-)
-              echo "$key<<EOF" >> $GITHUB_ENV
-              echo "$val" >> $GITHUB_ENV
-              echo "EOF" >> $GITHUB_ENV
-            fi
-          done < .env
-
-      - name: Start services with Docker Compose
-        run: docker compose up -d --build
-
-      - name: Wait for backend to be healthy
-        run: |
-          echo "Waiting for backend to start..."
-          for i in $(seq 1 40); do
-            STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8080/actuator/health || true)
-            if [ "$STATUS" = "200" ]; then
-              echo "Backend is healthy (attempt $i)"
-              exit 0
-            fi
-            echo "Attempt $i: status=$STATUS, retrying in 10s..."
-            
-            # Print status of containers every 5 attempts
-            if [ $((i % 5)) -eq 0 ]; then
-              echo "--- Container Status ---"
-              docker compose ps
-              echo "--- Backend Logs ---"
-              docker compose logs backend --tail 50
-              echo "---------------------"
-            fi
-            
-            sleep 10
-          done
-          echo "Backend failed to start after more than 6 minutes"
-          docker compose ps
-          docker compose logs
-          exit 1
-
-      - name: Verify health response
-        run: |
-          RESPONSE=$(curl -s http://localhost:8080/actuator/health)
-          echo "Health response: $RESPONSE"
-          echo "$RESPONSE" | grep -q '"status":"UP"' || (echo "Backend is NOT UP" && exit 1)
-
-      - name: Print logs on failure
-        if: failure()
-        run: docker compose logs
-
-      - name: Tear down
-        if: always()
-        run: docker compose down --volumes
-
-  # 4. Build and Push Image
-  build-and-push:
-    needs: integration-test
     runs-on: ubuntu-latest
     permissions:
       contents: read
       packages: write
-    
+    outputs:
+      image_tag: ${{ steps.image_tag.outputs.tag }}
+      image_name: ${{ steps.image_name.outputs.name }}
+
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Login to GitHub Container Registry
-        if: github.event_name != 'pull_request'
-        uses: docker/login-action@v3
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
       - name: Lowercase Repository Name
+        id: image_name
         run: |
-          echo "REPO_LC=${GITHUB_REPOSITORY,,}" >> $GITHUB_ENV
-
-      - name: Extract Metadata for Docker
-        id: meta
-        uses: docker/metadata-action@v5
-        with:
-          images: ghcr.io/${{ env.REPO_LC }}
-          tags: |
-            type=semver,pattern={{version}}
-            type=raw,value=latest,enable={{is_default_branch}}
-            type=sha,format=short
-
-      - name: Build and Load (for scanning)
-        uses: docker/build-push-action@v5
-        with:
-          context: .
-          load: true
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-
-      - name: Security Scan (Trivy)
-        uses: aquasecurity/trivy-action@master
-        with:
-          image-ref: ghcr.io/${{ env.REPO_LC }}:${{ steps.meta.outputs.version }}
-          format: 'table'
-          exit-code: '1' # Fail build neu co lo hong nghiem trong
-          ignore-unfixed: true
-          vuln-type: 'os,library'
-          severity: 'CRITICAL,HIGH'
-
-      - name: Push Image
-        if: github.event_name != 'pull_request'
-        uses: docker/build-push-action@v5
-        with:
-          context: .
-          push: true
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          echo "name=ghcr.io/${GITHUB_REPOSITORY,,}" >> $GITHUB_OUTPUT
 
       - name: Determine Image Tag
-        if: github.event_name != 'pull_request'
-        id: image_tag
-        run: |
-          if [[ "${{ github.ref }}" == refs/tags/* ]]; then
-            echo "tag=${{ steps.meta.outputs.version }}" >> $GITHUB_OUTPUT
-          else
-            echo "tag=sha-$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
-          fi
-
-  # 4. Update image tag in SecInfra repo (GitOps)
-  update-image-tag:
-    needs: build-and-push
-    if: github.event_name != 'pull_request'
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout SecInfra repo
-        uses: actions/checkout@v4
-        with:
-          repository: KienHocK8s/SecInfra
-          token: ${{ secrets.INFRA_REPO_TOKEN }}
-          ref: main
-
-      - name: Determine new image tag
         id: image_tag
         run: |
           if [[ "${{ github.ref }}" == refs/tags/* ]]; then
@@ -224,12 +67,148 @@ jobs:
             echo "tag=sha-$(echo '${{ github.sha }}' | cut -c1-7)" >> $GITHUB_OUTPUT
           fi
 
+      - name: Build Docker image
+        run: |
+          docker build \
+            -t ${{ steps.image_name.outputs.name }}:${{ steps.image_tag.outputs.tag }} \
+            -t ${{ steps.image_name.outputs.name }}:ci \
+            .
+
+      - name: Save Docker image
+        run: docker save ${{ steps.image_name.outputs.name }}:ci -o image.tar
+
+      - name: Upload Docker image artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-image
+          path: image.tar
+          retention-days: 1
+
+  integration-test:
+    needs: build-image
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download Docker image artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: backend-image
+
+      - name: Load Docker image
+        run: docker load -i image.tar
+
+      - name: Create .env file
+        run: echo "${{ secrets.ENV_FILE }}" > .env
+
+      - name: Start services with tested image
+        run: |
+          IMAGE=${{ needs.build-image.outputs.image_name }}:ci docker compose up -d
+
+      - name: Wait for backend to be healthy
+        run: |
+          echo "Waiting for backend to start..."
+          for i in $(seq 1 40); do
+            STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8080/actuator/health || true)
+            if [ "$STATUS" = "200" ]; then
+              echo "Backend is healthy"
+              exit 0
+            fi
+            echo "Attempt $i: status=$STATUS"
+            
+            # Print logs every 10 attempts to keep output clean but helpful
+            if [ $((i % 10)) -eq 0 ]; then
+              echo "--- Backend Logs (Attempt $i) ---"
+              docker compose logs backend --tail 50 || true
+            fi
+            
+            sleep 10
+          done
+
+          echo "Backend failed to start"
+          docker compose ps
+          docker compose logs
+          exit 1
+
+      - name: Verify health response
+        run: |
+          RESPONSE=$(curl -s http://localhost:8080/actuator/health)
+          echo "Health response: $RESPONSE"
+          echo "$RESPONSE" | grep -q '"status":"UP"'
+
+      - name: Tear down
+        if: always()
+        run: docker compose down --volumes
+
+  scan-and-push:
+    needs: [build-image, integration-test]
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download Docker image artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: backend-image
+
+      - name: Load Docker image
+        run: docker load -i image.tar
+
+      - name: Security Scan
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: ${{ needs.build-image.outputs.image_name }}:ci
+          format: 'table'
+          exit-code: '1'
+          ignore-unfixed: true
+          vuln-type: 'os,library'
+          severity: 'CRITICAL,HIGH'
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Tag and push tested image
+        run: |
+          docker tag ${{ needs.build-image.outputs.image_name }}:ci \
+            ${{ needs.build-image.outputs.image_name }}:${{ needs.build-image.outputs.image_tag }}
+
+          docker tag ${{ needs.build-image.outputs.image_name }}:ci \
+            ${{ needs.build-image.outputs.image_name }}:latest
+
+          docker push ${{ needs.build-image.outputs.image_name }}:${{ needs.build-image.outputs.image_tag }}
+
+          if [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
+            docker push ${{ needs.build-image.outputs.image_name }}:latest
+          fi
+
+  update-image-tag:
+    needs: [build-image, scan-and-push]
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout SecInfra repo
+        uses: actions/checkout@v4
+        with:
+          repository: KienHocK8s/SecInfra
+          token: ${{ secrets.INFRA_REPO_TOKEN }}
+          ref: main
+
       - name: Update image tag in value-prod.yaml
         run: |
-          NEW_TAG="${{ steps.image_tag.outputs.tag }}"
+          NEW_TAG="${{ needs.build-image.outputs.image_tag }}"
           FILE="app/backend/value-prod.yaml"
           sed -i "s/^  tag: .*/  tag: \"${NEW_TAG}\"/" "$FILE"
-          echo "Updated image tag to: ${NEW_TAG}"
           cat "$FILE" | grep "tag:"
 
       - name: Commit and push changes
@@ -237,5 +216,5 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add app/backend/value-prod.yaml
-          git diff --staged --quiet || git commit -m "ci: update backend image tag to ${{ steps.image_tag.outputs.tag }}"
+          git diff --staged --quiet || git commit -m "ci: update backend image tag to ${{ needs.build-image.outputs.image_tag }}"
           git push

@@ -39,7 +39,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    image: ghcr.io/nguyentukien/secweb:latest
+    image: ${IMAGE:-ghcr.io/nguyentukien/secweb:latest}
     environment:
       - SPRING_DOCKER_COMPOSE_ENABLED
       - SPRING_DATASOURCE_URL
