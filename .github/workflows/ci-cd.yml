@@ -24,8 +24,10 @@ jobs:
         run: chmod +x mvnw
 
       - name: Create and export .env file
+        env:
+          ENV_FILE: ${{ secrets.ENV_FILE }}
         run: |
-          echo "${{ secrets.ENV_FILE }}" > .env
+          echo "$ENV_FILE" > .env
           while IFS= read -r line || [ -n "$line" ]; do
             if [[ "$line" =~ ^[A-Z0-9_]+= ]]; then
               key=$(echo "$line" | cut -d'=' -f1)
@@ -100,7 +102,9 @@ jobs:
         run: docker load -i image.tar
 
       - name: Create .env file
-        run: echo "${{ secrets.ENV_FILE }}" > .env
+        env:
+          ENV_FILE: ${{ secrets.ENV_FILE }}
+        run: echo "$ENV_FILE" > .env
 
       - name: Start services with tested image
         run: |
