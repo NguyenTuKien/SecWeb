@@ -28,7 +28,7 @@ public class Conversation extends BaseEntity {
     @Column(name = "type", length = 20, nullable = false)
     private ConversationType type;
 
-    @Column(name = "name", length = 255)
+    @Column(name = "name", columnDefinition = "text")
     private String name;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
