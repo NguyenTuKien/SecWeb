@@ -31,6 +31,7 @@
 		<jjwt.version>0.12.6</jjwt.version>
 		<mapstruct.version>1.6.3</mapstruct.version>
 		<dotenv.version>3.2.0</dotenv.version>
+		<netty.version>4.2.13.Final</netty.version>
 	</properties>
 	<dependencies>
 		<dependency>
