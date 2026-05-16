@@ -24,6 +24,9 @@ jobs:
       - name: Make mvnw executable
         run: chmod +x mvnw
 
+      - name: Create .env file
+        run: echo "${{ secrets.ENV_FILE }}" > .env
+
       - name: Run Unit Tests
         run: ./mvnw clean test
 
