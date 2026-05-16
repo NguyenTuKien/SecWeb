@@ -32,7 +32,7 @@ The following guides illustrate how to use some features concretely:
 This project contains a Docker Compose file named `compose.yaml`.
 In this file, the following services have been defined:
 
-* mysql: [`mysql:latest`](https://hub.docker.com/_/mysql)
+* mysql: [`mariadb:11.4`](https://hub.docker.com/_/mariadb) (MariaDB LTS)
 
 Please review the tags of the used images and set them to the same as you're running in production.
 
