@@ -39,7 +39,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    image: ghcr.io/nguyentukien/secweb:latest
+    image: ${IMAGE:-ghcr.io/nguyentukien/secweb:latest}
     environment:
       - SPRING_DOCKER_COMPOSE_ENABLED
       - SPRING_DATASOURCE_URL
@@ -65,6 +65,7 @@ services:
       - APP_BOOTSTRAP_ADMIN_MASTER_KEY_PRIVATE_KEY_IV
       - APP_BOOTSTRAP_ADMIN_MASTER_KEY_PIN_SALT
       - APP_BOOTSTRAP_ADMIN_MASTER_KEY_KDF_PARAMS
+      - MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE=health
     ports:
       - 8080:8080
     depends_on:

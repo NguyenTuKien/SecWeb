@@ -5,26 +5,6 @@ metadata:
   labels:
     {{- include "helm.labels" . | nindent 4 }}
 data:
-  APP_NAME: {{ .Values.app.config.appName | quote }}
-  SERVER_PORT: {{ .Values.app.config.serverPort | quote }}
-  DOCKER_COMPOSE_ENABLED: {{ .Values.app.config.dockerComposeEnabled | quote }}
-  DB_HOST: {{ .Values.app.config.dbHost | quote }}
-  DB_PORT: {{ .Values.app.config.dbPort | quote }}
-  DB_NAME: {{ .Values.app.config.dbName | quote }}
-  DB_USERNAME: {{ .Values.app.config.dbUsername | quote }}
-  JPA_DDL_AUTO: {{ .Values.app.config.jpaDdlAuto | quote }}
-  REDIS_HOST: {{ .Values.app.config.redisHost | quote }}
-  REDIS_PORT: {{ .Values.app.config.redisPort | quote }}
-  REDIS_TIMEOUT: {{ .Values.app.config.redisTimeout | quote }}
-  JWT_ACCESS_TTL_MINUTES: {{ .Values.app.config.jwtAccessTtlMinutes | quote }}
-  JWT_REFRESH_TTL_DAYS: {{ .Values.app.config.jwtRefreshTtlDays | quote }}
-  GOOGLE_CLIENT_ID: {{ .Values.app.config.googleClientId | quote }}
-  GOOGLE_ALLOWED_AUDIENCES: {{ .Values.app.config.googleAllowedAudiences | quote }}
-  CORS_ALLOWED_ORIGINS: {{ .Values.app.config.corsAllowedOrigins | quote }}
-  ADMIN_SEED_ENABLED: {{ .Values.app.config.adminSeedEnabled | quote }}
-  ADMIN_USERNAME: {{ .Values.app.config.adminUsername | quote }}
-  ADMIN_EMAIL: {{ .Values.app.config.adminEmail | quote }}
-  ADMIN_MASTER_PUBLIC_KEY: {{ .Values.app.config.adminMasterPublicKey | quote }}
-  ADMIN_PRIVATE_KEY_IV: {{ .Values.app.config.adminPrivateKeyIv | quote }}
-  ADMIN_PIN_SALT: {{ .Values.app.config.adminPinSalt | quote }}
-  ADMIN_KDF_PARAMS: {{ .Values.app.config.adminKdfParams | quote }}
+  {{- range $key, $val := .Values.app.config }}
+  {{ $key }}: {{ $val | quote }}
+  {{- end }}
