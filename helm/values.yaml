@@ -1,7 +1,7 @@
 replicaCount: 1
 
 image:
-  repository: ghcr.io/your-github-username/mini-messenger
+  repository: ghcr.io/nguyentukien/secweb
   pullPolicy: IfNotPresent
   tag: "latest" # Overrides the image tag whose default is the chart appVersion.
 
@@ -21,33 +21,21 @@ podSecurityContext: {}
 
 securityContext: {}
 
+nodeSelector: {}
+tolerations: []
+affinity: {}
+
 service:
   type: ClusterIP
   port: 8080
 
-ingress:
-  enabled: true
-  className: "nginx"
-  annotations: {}
-    # kubernetes.io/ingress.class: nginx
-    # kubernetes.io/tls-acme: "true"
-  hosts:
-    - host: api.mini-messenger.local
-      paths:
-        - path: /
-          pathType: Prefix
-  tls: []
-  #  - secretName: chart-example-tls
-  #    hosts:
-  #      - chart-example.local
-
-resources: {}
-  # limits:
-  #   cpu: 100m
-  #   memory: 128Mi
-  # requests:
-  #   cpu: 100m
-  #   memory: 128Mi
+resources:
+  limits:
+    cpu: 100m
+    memory: 128Mi
+  requests:
+    cpu: 100m
+    memory: 128Mi
 
 autoscaling:
   enabled: false
@@ -55,41 +43,40 @@ autoscaling:
   maxReplicas: 100
   targetCPUUtilizationPercentage: 80
 
-nodeSelector: {}
-tolerations: []
-affinity: {}
-
-# Application specific configuration
 app:
   config:
-    appName: "mini-messenger"
-    serverPort: "8080"
-    dockerComposeEnabled: "false"
-    dbHost: "mysql-service" # update this with your actual mysql service or host
-    dbPort: "3306"
-    dbName: "mini_messenger"
-    dbUsername: "root"
-    jpaDdlAuto: "update"
-    redisHost: "redis-service" # update this with your actual redis service or host
-    redisPort: "6379"
-    redisTimeout: "3s"
-    jwtAccessTtlMinutes: "15"
-    jwtRefreshTtlDays: "30"
-    googleClientId: "PASTE_GOOGLE_OAUTH_CLIENT_ID_HERE"
-    googleAllowedAudiences: "PASTE_WEB_CLIENT_ID_HERE,PASTE_ANDROID_CLIENT_ID_HERE"
-    corsAllowedOrigins: "http://localhost:3000,http://localhost:5173"
-    adminSeedEnabled: "true"
-    adminUsername: "admin"
-    adminEmail: "admin@local.dev"
-    adminMasterPublicKey: "YWRtaW4tcHVibGljLWtleS1wbGFjZWhvbGRlcg=="
-    adminPrivateKeyIv: "YWRtaW4taXY="
-    adminPinSalt: "YWRtaW4tc2FsdA=="
-    adminKdfParams: '{"algorithm":"PBKDF2","iterations":100000,"keyLength":256,"digest":"SHA-256","bootstrap":true}'
+    SPRING_DOCKER_COMPOSE_ENABLED: false
+    SPRING_DATASOURCE_URL: jdbc:mysql://database:3306/mini_messenger?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
+    SPRING_DATASOURCE_USERNAME: admin
+    SPRING_JPA_HIBERNATE_DDL_AUTO: update    
 
+    SPRING_DATA_REDIS_URL: "[REDIS_URL]"
+    SPRING_DATA_REDIS_TIMEOUT: 3s
+    SPRING_DATA_REDIS_REPOSITORY_ENABLED: false
+
+    APP_JWT_SECRET: "[JWT_SECRET]"
+    APP_JWT_ACCESS_TOKEN_TTL_MINUTES: 15
+    APP_JWT_REFRESH_TOKEN_TTL_DAYS: 30
+
+    APP_GOOGLE_CLIENT_ID: "[GOOGLE_CLIENT_ID]"
+    APP_GOOGLE_ALLOWED_AUDIENCES: "[GOOGLE_CLIENT_ID]"
+
+    APP_CORS_ALLOWED_ORIGINS: "http://localhost:3000,http://localhost:5173"
+
+    APP_BOOTSTRAP_ADMIN_ENABLED: true
+    APP_BOOTSTRAP_ADMIN_USERNAME: admin
+    APP_BOOTSTRAP_ADMIN_EMAIL: "[EMAIL_ADDRESS]"
+    APP_BOOTSTRAP_ADMIN_MASTER_KEY_PUBLIC_KEY: "[PUBLIC_KEY]"
+    APP_BOOTSTRAP_ADMIN_MASTER_KEY_PRIVATE_KEY_IV: "[BASE64_ENCODED_IV]"
+    APP_BOOTSTRAP_ADMIN_MASTER_KEY_PIN_SALT: "[PIN_SALT]"
+    APP_BOOTSTRAP_ADMIN_MASTER_KEY_KDF_PARAMS: "{ \"algorithm\": \"PBKDF2\", \"iterations\": 100000, \"keyLength\": 256, \"digest\": \"SHA-256\", \"bootstrap\": true }"
+
+    # CLOUDFLARE
+    CLOUDFLARE_TUNNEL_TOKEN: "[CLOUDFLARE_TUNNEL_TOKEN]"
   secret:
-    dbPassword: "mini_password"
-    redisPassword: ""
-    jwtSecret: "CHANGE_ME_MINIMUM_32_BYTES_SECRET"
-    googleClientSecret: "PASTE_GOOGLE_OAUTH_CLIENT_SECRET_HERE_IF_NEEDED"
-    adminPassword: "admin123456"
-    adminEncryptedPrivateKey: "YWRtaW4tZW5jcnlwdGVkLXByaXZhdGUta2V5LWhvbGRlcg=="
+    SPRING_DATASOURCE_PASSWORD: "[PASSWORD]"
+    SPRING_DATA_REDIS_PASSWORD: "[PASSWORD]"
+    APP_JWT_SECRET: "[ENCRYPTION_KEY]"
+    APP_GOOGLE_CLIENT_SECRET: "[OAUTH_CLIENT_SECRET]"
+    APP_BOOTSTRAP_ADMIN_PASSWORD: "[PASSWORD]"
+    APP_BOOTSTRAP_ADMIN_MASTER_KEY_ENCRYPTED_PRIVATE_KEY: "[ENCRYPTED_PRIVATE_KEY]"
