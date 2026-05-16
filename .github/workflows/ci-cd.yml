@@ -50,9 +50,52 @@ jobs:
   #         SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
   #       run: ./mvnw -B verify sonar:sonar -Dsonar.projectKey=your_project_key -Dsonar.organization=your_org
 
-  # 3. Build and Push Image
-  build-and-push:
+  # 3. Integration Test
+  integration-test:
     needs: unit-test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Create .env file
+        run: echo "${{ secrets.ENV_FILE }}" > .env
+
+      - name: Start services with Docker Compose
+        run: docker compose up -d --build
+
+      - name: Wait for backend to be healthy
+        run: |
+          echo "Waiting for backend to start..."
+          for i in $(seq 1 30); do
+            STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8080/actuator/health || true)
+            if [ "$STATUS" = "200" ]; then
+              echo "Backend is healthy (attempt $i)"
+              exit 0
+            fi
+            echo "Attempt $i: status=$STATUS, retrying in 10s..."
+            sleep 10
+          done
+          echo "Backend failed to start after 5 minutes"
+          docker compose logs backend
+          exit 1
+
+      - name: Verify health response
+        run: |
+          RESPONSE=$(curl -s http://localhost:8080/actuator/health)
+          echo "Health response: $RESPONSE"
+          echo "$RESPONSE" | grep -q '"status":"UP"' || (echo "Backend is NOT UP" && exit 1)
+
+      - name: Print logs on failure
+        if: failure()
+        run: docker compose logs
+
+      - name: Tear down
+        if: always()
+        run: docker compose down --volumes
+
+  # 4. Build and Push Image
+  build-and-push:
+    needs: integration-test
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -116,3 +159,52 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+      - name: Determine Image Tag
+        if: github.event_name != 'pull_request'
+        id: image_tag
+        run: |
+          if [[ "${{ github.ref }}" == refs/tags/* ]]; then
+            echo "tag=${{ steps.meta.outputs.version }}" >> $GITHUB_OUTPUT
+          else
+            echo "tag=sha-$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
+          fi
+
+  # 4. Update image tag in SecInfra repo (GitOps)
+  update-image-tag:
+    needs: build-and-push
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout SecInfra repo
+        uses: actions/checkout@v4
+        with:
+          repository: KienHocK8s/SecInfra
+          token: ${{ secrets.INFRA_REPO_TOKEN }}
+          ref: main
+
+      - name: Determine new image tag
+        id: image_tag
+        run: |
+          if [[ "${{ github.ref }}" == refs/tags/* ]]; then
+            VERSION="${{ github.ref_name }}"
+            echo "tag=${VERSION#v}" >> $GITHUB_OUTPUT
+          else
+            echo "tag=sha-$(echo '${{ github.sha }}' | cut -c1-7)" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Update image tag in value-prod.yaml
+        run: |
+          NEW_TAG="${{ steps.image_tag.outputs.tag }}"
+          FILE="app/backend/value-prod.yaml"
+          sed -i "s/^  tag: .*/  tag: \"${NEW_TAG}\"/" "$FILE"
+          echo "Updated image tag to: ${NEW_TAG}"
+          cat "$FILE" | grep "tag:"
+
+      - name: Commit and push changes
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add app/backend/value-prod.yaml
+          git diff --staged --quiet || git commit -m "ci: update backend image tag to ${{ steps.image_tag.outputs.tag }}"
+          git push
