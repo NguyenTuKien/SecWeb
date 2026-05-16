@@ -5,6 +5,7 @@ import com.messenger.mini_messenger.dto.request.UpdateMessageRequest;
 import com.messenger.mini_messenger.dto.response.ApiMessageResponse;
 import com.messenger.mini_messenger.dto.response.MessageCreatedResponse;
 import com.messenger.mini_messenger.dto.response.MessageResponse;
+import com.messenger.mini_messenger.dto.websocket.RealtimeMessageRequest;
 import com.messenger.mini_messenger.security.CurrentUser;
 
 import java.util.List;
@@ -14,6 +15,8 @@ public interface MessageService {
     List<MessageResponse> getMessages(CurrentUser currentUser, UUID conversationId, int limit);
 
     MessageCreatedResponse sendMessage(CurrentUser currentUser, UUID conversationId, SendMessageRequest request);
+
+    MessageResponse sendRealtimeMessage(CurrentUser currentUser, RealtimeMessageRequest request);
 
     MessageResponse updateMessage(CurrentUser currentUser, UUID conversationId, UUID messageId, UpdateMessageRequest request);
 

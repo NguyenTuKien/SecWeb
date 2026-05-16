@@ -5,11 +5,13 @@ import com.messenger.mini_messenger.dto.request.UpdateMessageRequest;
 import com.messenger.mini_messenger.dto.response.ApiMessageResponse;
 import com.messenger.mini_messenger.dto.response.MessageCreatedResponse;
 import com.messenger.mini_messenger.dto.response.MessageResponse;
+import com.messenger.mini_messenger.dto.websocket.RealtimeMessageRequest;
 import com.messenger.mini_messenger.entity.Conversation;
 import com.messenger.mini_messenger.entity.ConversationKeyVersion;
 import com.messenger.mini_messenger.entity.Message;
 import com.messenger.mini_messenger.entity.User;
 import com.messenger.mini_messenger.enums.ConversationMemberStatus;
+import com.messenger.mini_messenger.enums.MessageType;
 import com.messenger.mini_messenger.exception.ApiException;
 import com.messenger.mini_messenger.mapper.MessageMapper;
 import com.messenger.mini_messenger.repository.ConversationKeyVersionRepository;
@@ -87,6 +89,43 @@ public class MessageServiceImpl implements MessageService {
 
         conversation.setLastMessageAt(Instant.now());
         return new MessageCreatedResponse(message.getId(), conversationId, sender.getId(), message.getCreatedAt());
+    }
+
+    @Override
+    @Transactional
+    public MessageResponse sendRealtimeMessage(CurrentUser currentUser, RealtimeMessageRequest request) {
+        if (!currentUser.userId().equals(request.senderId())) {
+            throw new ApiException(HttpStatus.FORBIDDEN, "senderId must match authenticated user");
+        }
+
+        UUID conversationId = request.conversationId();
+        requireParticipant(currentUser, conversationId);
+        Conversation conversation = conversationRepository.findById(conversationId)
+                .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Conversation not found"));
+        User sender = userRepository.findById(request.senderId())
+                .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "User not found"));
+        int keyVersionNumber = request.keyVersion() != null ? request.keyVersion() : conversation.getCurrentKeyVersion();
+        ConversationKeyVersion keyVersion = keyVersionRepository.findByConversationIdAndKeyVersion(conversationId, keyVersionNumber)
+                .orElseThrow(() -> new ApiException(HttpStatus.BAD_REQUEST, "Conversation key version not found"));
+
+        SendMessageRequest sendRequest = new SendMessageRequest(
+                request.clientMessageId(),
+                request.cipherData(),
+                request.iv(),
+                request.aad(),
+                keyVersionNumber,
+                request.messageType() != null ? request.messageType() : MessageType.TEXT,
+                request.clientCreatedAt() != null ? request.clientCreatedAt() : Instant.now(),
+                request.attachments()
+        );
+        Message message = messageMapper.toEntity(sendRequest);
+        message.setConversation(conversation);
+        message.setSender(sender);
+        message.setKeyVersion(keyVersion);
+        messageRepository.save(message);
+
+        conversation.setLastMessageAt(Instant.now());
+        return messageMapper.toResponse(message);
     }
 
     @Override
