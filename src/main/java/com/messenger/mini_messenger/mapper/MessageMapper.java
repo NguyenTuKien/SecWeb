@@ -8,8 +8,6 @@ import com.messenger.mini_messenger.dto.response.MessageResponse;
 import com.messenger.mini_messenger.entity.ConversationKeyVersion;
 import com.messenger.mini_messenger.entity.Message;
 import com.messenger.mini_messenger.entity.MessageAttachment;
-import com.messenger.mini_messenger.enums.MessageType;
-import com.messenger.mini_messenger.util.JsonUtil;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
@@ -17,19 +15,13 @@ import java.util.List;
 @Component
 public class MessageMapper {
 
-    private final JsonUtil jsonUtil;
-
-    public MessageMapper(JsonUtil jsonUtil) {
-        this.jsonUtil = jsonUtil;
-    }
-
     public Message toEntity(SendMessageRequest request) {
         Message message = new Message();
         message.setClientMessageId(request.clientMessageId());
         message.setCipherData(request.cipherData());
         message.setIv(request.iv());
         message.setAad(request.aad());
-        message.setMessageType(MessageType.valueOf(request.messageType()));
+        message.setMessageType(request.messageType());
         message.setClientCreatedAt(request.clientCreatedAt());
         if (request.attachments() != null) {
             request.attachments().forEach(attachmentRequest -> {
@@ -46,7 +38,7 @@ public class MessageMapper {
         message.setIv(request.iv());
         message.setAad(request.aad());
         message.setKeyVersion(keyVersion);
-        message.setMessageType(MessageType.valueOf(request.messageType()));
+        message.setMessageType(request.messageType());
     }
 
     public MessageAttachment toEntity(MessageAttachmentRequest request) {
@@ -54,7 +46,7 @@ public class MessageMapper {
         attachment.setStorageProvider(request.storageProvider());
         attachment.setStorageKey(request.storageKey());
         attachment.setEncryptedFileKey(request.encryptedFileKey());
-        attachment.setEncryptedMetadata(jsonUtil.toJson(request.encryptedMetadata()));
+        attachment.setEncryptedMetadata(request.encryptedMetadata());
         return attachment;
     }
 
@@ -85,7 +77,7 @@ public class MessageMapper {
                 attachment.getStorageProvider(),
                 attachment.getStorageKey(),
                 attachment.getEncryptedFileKey(),
-                jsonUtil.toMap(attachment.getEncryptedMetadata()),
+                attachment.getEncryptedMetadata(),
                 attachment.getCreatedAt()
         );
     }

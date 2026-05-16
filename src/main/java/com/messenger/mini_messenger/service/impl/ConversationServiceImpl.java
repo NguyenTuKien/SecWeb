@@ -235,13 +235,13 @@ public class ConversationServiceImpl implements ConversationService {
 
     private void storeEncryptedKeys(Conversation conversation, ConversationKeyVersion keyVersion, List<EncryptedConversationKeyRequest> encryptedKeys) {
         for (EncryptedConversationKeyRequest encryptedKey : encryptedKeys) {
+            validateEncryptedKeyRequest(conversation, keyVersion, encryptedKey);
             if (encryptedKey.recipientType() == ConversationKeyRecipientType.MASTER) {
-                MasterKey masterKey = masterKeyRepository.findById(encryptedKey.recipientKeyId())
-                        .orElseThrow(() -> new ApiException(HttpStatus.BAD_REQUEST, "Master key not found"));
+                MasterKey masterKey = findMasterKeyForUser(encryptedKey);
                 ConversationKeyBackup backup = new ConversationKeyBackup();
                 backup.setConversation(conversation);
                 backup.setKeyVersion(keyVersion);
-                backup.setUser(findUser(encryptedKey.userId()));
+                backup.setUser(masterKey.getUser());
                 backup.setMasterKey(masterKey);
                 backup.setEncryptedConversationKey(encryptedKey.encryptedConversationKey());
                 keyBackupRepository.save(backup);
@@ -254,6 +254,8 @@ public class ConversationServiceImpl implements ConversationService {
     private void storeSessionConversationKey(UUID conversationId, EncryptedConversationKeyRequest encryptedKey) {
         UserSession session = sessionRepository.findById(encryptedKey.recipientKeyId())
                 .filter(value -> value.getStatus() == SessionStatus.ACTIVE)
+                .filter(value -> value.getExpiresAt().isAfter(Instant.now()))
+                .filter(value -> value.getUser().getId().equals(encryptedKey.userId()))
                 .orElseThrow(() -> new ApiException(HttpStatus.BAD_REQUEST, "Active session key not found"));
         try {
             RedisConversationKeyValue value = new RedisConversationKeyValue(
@@ -272,6 +274,42 @@ public class ConversationServiceImpl implements ConversationService {
         } catch (Exception exception) {
             throw new ApiException(HttpStatus.INTERNAL_SERVER_ERROR, "Cannot store session conversation key");
         }
+    }
+
+    private void validateEncryptedKeyRequest(
+            Conversation conversation,
+            ConversationKeyVersion keyVersion,
+            EncryptedConversationKeyRequest encryptedKey
+    ) {
+        if (encryptedKey.keyVersion() != keyVersion.getKeyVersion()) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "Encrypted key version does not match conversation key version");
+        }
+        if (!isActiveMember(conversation, encryptedKey.userId())) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "Encrypted key recipient must be an active conversation member");
+        }
+    }
+
+    private MasterKey findMasterKeyForUser(EncryptedConversationKeyRequest encryptedKey) {
+        MasterKey masterKey = masterKeyRepository.findById(encryptedKey.recipientKeyId())
+                .orElseThrow(() -> new ApiException(HttpStatus.BAD_REQUEST, "Master key not found"));
+        if (!masterKey.getUser().getId().equals(encryptedKey.userId())) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "Master key does not belong to encrypted key recipient");
+        }
+        return masterKey;
+    }
+
+    private boolean isActiveMember(Conversation conversation, UUID userId) {
+        boolean presentInLoadedMembers = conversation.getMembers().stream()
+                .anyMatch(member -> member.getUser().getId().equals(userId)
+                        && member.getStatus() == ConversationMemberStatus.ACTIVE);
+        if (presentInLoadedMembers) {
+            return true;
+        }
+        return memberRepository.findByConversationIdAndUserIdAndStatus(
+                conversation.getId(),
+                userId,
+                ConversationMemberStatus.ACTIVE
+        ).isPresent();
     }
 
     private User findUser(UUID userId) {

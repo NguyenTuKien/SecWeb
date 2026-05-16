@@ -4,12 +4,21 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.exc.UnrecognizedPropertyException;
 import com.fasterxml.jackson.databind.json.JsonMapper;
+import com.messenger.mini_messenger.dto.request.CreateConversationRequest;
+import com.messenger.mini_messenger.dto.request.EncryptedConversationKeyRequest;
+import com.messenger.mini_messenger.dto.request.MessageAttachmentRequest;
 import com.messenger.mini_messenger.dto.request.SendMessageRequest;
+import com.messenger.mini_messenger.enums.ConversationKeyRecipientType;
+import com.messenger.mini_messenger.enums.ConversationType;
+import com.messenger.mini_messenger.enums.MessageType;
+import com.messenger.mini_messenger.enums.StorageProvider;
 import jakarta.validation.Validation;
 import jakarta.validation.Validator;
 import org.junit.jupiter.api.Test;
 
 import java.time.Instant;
+import java.util.List;
+import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -47,7 +56,7 @@ class SendMessageRequestTest {
                 "aXY=",
                 "YWFk",
                 1,
-                "TEXT",
+                MessageType.TEXT,
                 Instant.parse("2026-05-13T09:00:00Z"),
                 null
         );
@@ -78,5 +87,44 @@ class SendMessageRequestTest {
 
         assertEquals("client-message-1", request.clientMessageId());
         assertEquals("YWFk", request.aad());
+    }
+
+    @Test
+    void rejectsPlaintextConversationName() {
+        var request = new CreateConversationRequest(
+                ConversationType.GROUP,
+                "Project planning room",
+                List.of(UUID.randomUUID()),
+                List.of(new EncryptedConversationKeyRequest(
+                        UUID.randomUUID(),
+                        ConversationKeyRecipientType.MASTER,
+                        UUID.randomUUID(),
+                        "ZW5jcnlwdGVkLWtleQ==",
+                        1
+                ))
+        );
+
+        assertEquals(1, validator.validate(request).size());
+    }
+
+    @Test
+    void rejectsPlaintextAttachmentMetadata() {
+        var request = new SendMessageRequest(
+                "client-message-1",
+                "Y2lwaGVy",
+                "aXY=",
+                "YWFk",
+                1,
+                MessageType.FILE,
+                Instant.parse("2026-05-13T09:00:00Z"),
+                List.of(new MessageAttachmentRequest(
+                        StorageProvider.LOCAL,
+                        "object-key",
+                        "ZmlsZS1rZXk=",
+                        "{\"filename\":\"secret-plan.pdf\"}"
+                ))
+        );
+
+        assertEquals(1, validator.validate(request).size());
     }
 }

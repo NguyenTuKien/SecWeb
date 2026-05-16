@@ -32,6 +32,6 @@ public class MessageAttachment extends BaseEntity {
     @Column(name = "encrypted_file_key", columnDefinition = "text", nullable = false)
     private String encryptedFileKey;
 
-    @Column(name = "encrypted_metadata", columnDefinition = "json", nullable = false)
+    @Column(name = "encrypted_metadata", columnDefinition = "text", nullable = false)
     private String encryptedMetadata;
 }

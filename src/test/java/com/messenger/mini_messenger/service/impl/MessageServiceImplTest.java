@@ -1,6 +1,5 @@
 package com.messenger.mini_messenger.service.impl;
 
-import com.fasterxml.jackson.databind.json.JsonMapper;
 import com.messenger.mini_messenger.dto.request.UpdateMessageRequest;
 import com.messenger.mini_messenger.entity.Conversation;
 import com.messenger.mini_messenger.entity.ConversationKeyVersion;
@@ -62,7 +61,7 @@ class MessageServiceImplTest {
 
     @org.junit.jupiter.api.BeforeEach
     void setUp() {
-        MessageMapper messageMapper = new MessageMapper(new com.messenger.mini_messenger.util.JsonUtil(JsonMapper.builder().findAndAddModules().build()));
+        MessageMapper messageMapper = new MessageMapper();
         messageService = new MessageServiceImpl(
                 messageRepository,
                 conversationRepository,
@@ -81,7 +80,7 @@ class MessageServiceImplTest {
         CurrentUser currentUser = new CurrentUser(senderId, "sender", UUID.randomUUID());
         Message message = message(conversationId, messageId, senderId);
         ConversationKeyVersion keyVersion = keyVersion(conversationId, 2);
-        var request = new UpdateMessageRequest("bmV3LWNpcGhlcg==", "bmV3LWl2", "bmV3LWFhZA==", 2, "IMAGE");
+        var request = new UpdateMessageRequest("bmV3LWNpcGhlcg==", "bmV3LWl2", "bmV3LWFhZA==", 2, MessageType.IMAGE);
 
         allowParticipant(currentUser, conversationId);
         when(messageRepository.findById(messageId)).thenReturn(Optional.of(message));
@@ -105,7 +104,7 @@ class MessageServiceImplTest {
         UUID senderId = UUID.randomUUID();
         CurrentUser currentUser = new CurrentUser(currentUserId, "not-sender", UUID.randomUUID());
         Message message = message(conversationId, messageId, senderId);
-        var request = new UpdateMessageRequest("bmV3LWNpcGhlcg==", "bmV3LWl2", null, 1, "TEXT");
+        var request = new UpdateMessageRequest("bmV3LWNpcGhlcg==", "bmV3LWl2", null, 1, MessageType.TEXT);
 
         allowParticipant(currentUser, conversationId);
         when(messageRepository.findById(messageId)).thenReturn(Optional.of(message));
@@ -144,7 +143,7 @@ class MessageServiceImplTest {
         CurrentUser currentUser = new CurrentUser(senderId, "sender", UUID.randomUUID());
         Message message = message(conversationId, messageId, senderId);
         message.setDeletedAt(Instant.now());
-        var request = new UpdateMessageRequest("bmV3LWNpcGhlcg==", "bmV3LWl2", null, 1, "TEXT");
+        var request = new UpdateMessageRequest("bmV3LWNpcGhlcg==", "bmV3LWl2", null, 1, MessageType.TEXT);
 
         allowParticipant(currentUser, conversationId);
         when(messageRepository.findById(messageId)).thenReturn(Optional.of(message));
