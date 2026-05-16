@@ -74,7 +74,8 @@ services:
   cloudflare:
     image: cloudflare/cloudflared:2026.3.0
     restart: always
-    env_file: .env
+    environment:
+      - CLOUDFLARE_TUNNEL_TOKEN
     command: tunnel --no-autoupdate run --token ${CLOUDFLARE_TUNNEL_TOKEN}
     depends_on:
       - backend
