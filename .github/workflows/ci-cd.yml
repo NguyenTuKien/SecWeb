@@ -56,7 +56,7 @@ jobs:
         run: |
           ./mvnw -B org.sonarsource.scanner.maven:sonar-maven-plugin:sonar \
             -Dsonar.projectKey=NguyenTuKien_ATBM \
-            -Dsonar.organization=kienhoccode
+            -Dsonar.organization=KienHocCode
 
   build-image:
     needs: unit-test
