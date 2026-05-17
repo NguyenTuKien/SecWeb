@@ -37,7 +37,7 @@ public class AdminBootstrap implements ApplicationRunner {
             @Value("${app.bootstrap.admin.master-key.public-key:YWRtaW4tcHVibGljLWtleS1wbGFjZWhvbGRlcg==}") String publicKey,
             @Value("${app.bootstrap.admin.master-key.encrypted-private-key:YWRtaW4tZW5jcnlwdGVkLXByaXZhdGUta2V5LWhvbGRlcg==}") String encryptedPrivateKey,
             @Value("${app.bootstrap.admin.master-key.private-key-iv:YWRtaW4taXY=}") String privateKeyIv,
-            @Value("${app.bootstrap.admin.master-key.pin-salt:YWRtaW4tc2FsdA==}") String pinSalt,
+            @Value("${app.bootstrap.admin.master-key.pin-salt:123456}") String pinSalt,
             @Value("${app.bootstrap.admin.master-key.kdf-params:{\"algorithm\":\"PBKDF2\",\"iterations\":100000,\"keyLength\":256,\"digest\":\"SHA-256\",\"bootstrap\":true}}") String kdfParams,
             UserRepository userRepository,
             PasswordEncoder passwordEncoder
