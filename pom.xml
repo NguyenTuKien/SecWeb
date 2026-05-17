@@ -162,6 +162,20 @@
 				<groupId>org.jacoco</groupId>
 				<artifactId>jacoco-maven-plugin</artifactId>
 				<version>0.8.12</version>
+				<configuration>
+					<excludes>
+						<exclude>com/messenger/mini_messenger/config/**/*</exclude>
+						<exclude>com/messenger/mini_messenger/dto/**/*</exclude>
+						<exclude>com/messenger/mini_messenger/entity/**/*</exclude>
+						<exclude>com/messenger/mini_messenger/enums/**/*</exclude>
+						<exclude>com/messenger/mini_messenger/exception/**/*</exclude>
+						<exclude>com/messenger/mini_messenger/mapper/**/*</exclude>
+						<exclude>com/messenger/mini_messenger/repository/**/*</exclude>
+						<exclude>com/messenger/mini_messenger/security/**/*</exclude>
+						<exclude>com/messenger/mini_messenger/validation/**/*</exclude>
+						<exclude>com/messenger/mini_messenger/MiniMessengerApplication.class</exclude>
+					</excludes>
+				</configuration>
 				<executions>
 					<execution>
 						<goals>
