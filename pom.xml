@@ -173,7 +173,6 @@
 						<exclude>com/messenger/mini_messenger/repository/**/*</exclude>
 						<exclude>com/messenger/mini_messenger/security/**/*</exclude>
 						<exclude>com/messenger/mini_messenger/validation/**/*</exclude>
-						<exclude>com/messenger/mini_messenger/controller/**/*</exclude>
 						<exclude>com/messenger/mini_messenger/websocket/**/*</exclude>
 						<exclude>com/messenger/mini_messenger/util/**/*</exclude>
 						<exclude>com/messenger/mini_messenger/MiniMessengerApplication.class</exclude>
