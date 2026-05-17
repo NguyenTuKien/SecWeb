@@ -177,7 +177,6 @@ jobs:
 
   scan-and-push:
     needs: [build-image, integration-test]
-    if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -207,6 +206,7 @@ jobs:
           severity: 'CRITICAL,HIGH'
 
       - name: Login to GitHub Container Registry
+        if: github.event_name != 'pull_request'
         uses: docker/login-action@9780b0c442fbb1117ed29e0efdff1e18412f7567 # v3.3.0 (Audited Safe SHA)
         with:
           registry: ghcr.io
@@ -214,6 +214,7 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Tag and push tested image
+        if: github.event_name != 'pull_request'
         run: |
           docker tag ${{ needs.build-image.outputs.image_name }}:ci \
             ${{ needs.build-image.outputs.image_name }}:${{ needs.build-image.outputs.image_tag }}
