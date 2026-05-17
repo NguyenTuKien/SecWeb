@@ -197,7 +197,7 @@ jobs:
         run: docker load -i image.tar
 
       - name: Security Scan
-        uses: aquasecurity/trivy-action@master
+        uses: aquasecurity/trivy-action@18f28d7ec6e8550186fc18e22770529d27528a24 # Pinned stable v0.28.0 (Audited Safe SHA)
         with:
           image-ref: ${{ needs.build-image.outputs.image_name }}:ci
           format: 'table'
@@ -207,7 +207,7 @@ jobs:
           severity: 'CRITICAL,HIGH'
 
       - name: Login to GitHub Container Registry
-        uses: docker/login-action@v3
+        uses: docker/login-action@9780b0c442fbb1117ed29e0efdff1e18412f7567 # v3.3.0 (Audited Safe SHA)
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
