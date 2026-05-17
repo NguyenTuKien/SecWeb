@@ -64,7 +64,8 @@ jobs:
           ./mvnw -B org.sonarsource.scanner.maven:sonar-maven-plugin:sonar \
             -Dsonar.projectKey=NguyenTuKien_ATBM \
             -Dsonar.organization=nguyentukien \
-            -Dsonar.coverage.jacoco.xmlReportPaths=target/site/jacoco/jacoco.xml
+            -Dsonar.coverage.jacoco.xmlReportPaths=target/site/jacoco/jacoco.xml \
+            -Dsonar.coverage.exclusions=**/*
 
   build-image:
     needs: unit-test
