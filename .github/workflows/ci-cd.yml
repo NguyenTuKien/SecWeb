@@ -42,6 +42,22 @@ jobs:
       - name: Run Unit Tests
         run: ./mvnw clean test
 
+      - name: Cache SonarCloud packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.sonar/cache
+          key: ${{ runner.os }}-sonar
+          restore-keys: ${{ runner.os }}-sonar
+
+      - name: Run SonarQube Scan
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        run: |
+          ./mvnw -B org.sonarsource.scanner.maven:sonar-maven-plugin:sonar \
+            -Dsonar.projectKey=NguyenTuKien_ATBM \
+            -Dsonar.organization=kienhoccode
+
   build-image:
     needs: unit-test
     runs-on: ubuntu-latest
