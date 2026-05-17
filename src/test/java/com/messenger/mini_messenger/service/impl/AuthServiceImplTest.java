@@ -91,7 +91,7 @@ class AuthServiceImplTest {
         savedUser.setUsername("username");
         when(userRepository.save(any(User.class))).thenReturn(savedUser);
 
-        UserResponse userResponse = new UserResponse(UUID.randomUUID(), "username", "email@test.com", "display", null, UserRole.USER, UserStatus.ACTIVE, null, null);
+        UserResponse userResponse = new UserResponse(UUID.randomUUID(), "email@test.com", "username", "display", null, UserRole.USER, UserStatus.ACTIVE, null, null);
         when(userMapper.toResponse(any(User.class))).thenReturn(userResponse);
 
         UserResponse response = authService.signup(signupRequest);
