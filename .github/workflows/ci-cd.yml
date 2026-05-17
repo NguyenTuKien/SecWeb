@@ -197,7 +197,7 @@ jobs:
         run: docker load -i image.tar
 
       - name: Security Scan
-        uses: aquasecurity/trivy-action@18f28d7ec6e8550186fc18e22770529d27528a24 # Pinned stable v0.28.0 (Audited Safe SHA)
+        uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1 # Pinned stable v0.35.0 (Official Safe SHA)
         with:
           image-ref: ${{ needs.build-image.outputs.image_name }}:ci
           format: 'table'
